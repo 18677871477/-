@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>百度短链→WKT转换器</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { font-family: sans-serif; max-width:600px; margin:30px auto; padding:10px; }
+    input, button, textarea { width:100%; box-sizing:border-box; margin:8px 0; padding:8px; font-size:16px; }
+    textarea { height:120px; }
+  </style>
+</head>
+<body>
+  <h2>百度短链 → 路径 WKT 提取</h2>
+  <input id="shortUrl" placeholder="粘贴百度短链，如 https://j.map.baidu.com/58/dEMk" />
+  <button onclick="convert()">转换为 WKT</button>
+  <textarea id="output" placeholder="结果将在这里显示..."></textarea>
+
+  <script>
+  async function convert() {
+    const input = document.getElementById('shortUrl').value.trim();
+    const out = document.getElementById('output');
+    out.value = '⏳ 正在获取 WKT，请稍候...';
+
+    try {
+      const res = await fetch(input, { method: 'GET', redirect: 'follow' });
+      const finalUrl = res.url;
+
+      const m = decodeURIComponent(finalUrl).match(/en=([^&]+)/);
+      if (!m) throw '未检测到 en 参数，无法识别路径';
+
+      const coords = [];
+      m[1].split('to:').forEach(seg => {
+        const coord = seg.split('$').find(s => s.includes(','));
+        if (coord) {
+          const [x, y] = coord.split(',').map(Number);
+          if (!isNaN(x) && !isNaN(y)) coords.push([x, y]);
+        }
+      });
+
+      if (coords.length < 2) throw '轨迹点不足';
+
+      const wkt = 'LINESTRING(' + coords.map(c => c.join(' ')).join(', ') + ')';
+      out.value = wkt;
+      out.select();
+    } catch (e) {
+      out.value = '❌ 转换失败：' + e;
+    }
+  }
+  </script>
+</body>
+</html>
